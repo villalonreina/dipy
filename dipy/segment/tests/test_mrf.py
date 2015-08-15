@@ -20,8 +20,8 @@ image[..., :nslices] = single_slice[..., None]
 
 # Execute the segmentation
 nclasses = 4
-beta = np.float64(0.)
-max_iter = 12
+beta = np.float64(0.1)
+max_iter = 15
 
 square = np.zeros((256, 256, 3))
 square[42:213, 42:213, :] = 3
@@ -214,7 +214,7 @@ def test_greyscale_iter():
         print('\n')
 
 
-        mu_upd, sigmasq_upd = com.update_param(image_gauss, PLY, mu, nclasses)
+        mu_upd, sigmasq_upd = com.update_param_new(image_gauss, PLY, mu, nclasses)
         npt.assert_equal(mu_upd.all() >= 0.0, True)
         npt.assert_equal(sigmasq_upd.all() >= 0.0, True)
 
@@ -267,6 +267,7 @@ def test_greyscale_iter():
 
         plt.figure()
         plt.imshow(np.abs(final_segmentation[..., 1] - initial_segmentation[..., 1]))
+        plt.colorbar()
 
         diff = np.abs(final_segmentation[..., 1] - initial_segmentation[..., 1])
 

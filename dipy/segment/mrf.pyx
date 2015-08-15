@@ -121,7 +121,7 @@ class ConstantObservationModel(object):
         nclasses : int - number of tissue classes
         seg : 3D ndarray - tissue segmentation derived from the ICM
                                      model. Must be padded with zeros
-        beta : float - value of th importance of the neighborhood
+        beta : float - value of the importance of the neighborhood
 
         Returns
         --------
@@ -196,7 +196,7 @@ class ConstantObservationModel(object):
         return P_L_Y
 
 
-    def update_param(self, image, P_L_Y, mu, nclasses):
+    def update_param_old(self, image, P_L_Y, mu, nclasses):
         r""" Updates the means and the variances in each iteration for all the
         labels. This is for equations 25 and 26 of the Zhang paper
 
@@ -229,7 +229,46 @@ class ConstantObservationModel(object):
             var_num[..., l] = P_L_Y[..., l] * ((image - mu[l]) ** 2)
 
             mu_upd[l] = np.sum(mu_num[..., l]) / np.sum(P_L_Y[..., l])
-            var_upd[l] = np.sum(var_num[..., l]) / np.sum(P_L_Y[..., l])
+            var_upd[l] = np.sum(var_num[:, :, :, l]) / np.sum(P_L_Y[:, :, :, l])
+
+
+        return mu_upd, var_upd
+        
+
+def update_param_new(self, image, P_L_Y, mu, nclasses):
+        r""" Updates the means and the variances in each iteration for all the
+        labels. This is for equations 25 and 26 of the Zhang paper
+
+        Parameters
+        -----------
+        image : ndarray
+            Input T1 grey scale image
+
+        P_L_Y : ndarray
+            Probability of the label given the input image computed by the
+            Expectation Maximization algorithm.
+
+        Returns
+        --------
+        mu_upd : 1x3 ndarray - mean of each tissue class
+        var_upd : 1x3 ndarray - variance of each tissue class
+
+        """
+        # temporary mu and var files to compute the update
+        mu_upd = np.zeros(nclasses, dtype=np.float64)
+        var_upd = np.zeros(nclasses, dtype=np.float64)
+        mu_num = np.zeros(image.shape + (nclasses,), dtype=np.float64)
+        var_num = np.zeros(image.shape + (nclasses,), dtype=np.float64)
+
+
+        for l in range(nclasses):
+
+            #_update_param(image, mu, l, P_L_Y, mu_num, var_num)
+            mu_num[..., l] = P_L_Y[..., l] * image
+            var_num[..., l] = mu_num[..., l] * image
+
+            mu_upd[l] = np.sum(mu_num[..., l]) / np.sum(P_L_Y[..., l])
+            var_upd[l] = np.sum(var_num[..., l]) / np.sum(P_L_Y[..., l]) - mu_upd[l] ** 2
 
 
         return mu_upd, var_upd
@@ -290,7 +329,7 @@ cdef void _negloglikelihood(double[:, :, :] image, double[:] mu,
                 if sigmasq[l] < eps_sq:
                     if fabs(image[x, y, z] - mu[l]) < eps:
                         neglogl[x, y, z, l] = 1 + log(sqrt(2.0 * NPY_PI * sigmasq[l]))
-#                        neglogl[x, y, z, l] = 1 + log(sigmasq[l])
+#                        neglogl[x, y, z, l] = 1 + log(sigmasq[l])/2
                         if x==50 and y==50 and z==1:
                             with gil: print('This is BK voxel!! 1+log')
                         if x==147 and y==129 and z==1:
@@ -315,7 +354,7 @@ cdef void _negloglikelihood(double[:, :, :] image, double[:] mu,
                 else:
                     neglogl[x, y, z, l] = ((image[x, y, z] - mu[l]) ** 2.0) / (2.0 * sigmasq[l]) #original
 #                    neglogl[x, y, z, l] = (image[x, y, z] - mu[l]) / sqrt(sigmasq[l]) # Demirkaya
-#                    neglogl[x, y, z, l] = (((image[x, y, z] - mu[l]) ** 2.0) / sigmasq[l] + log(sigmasq[l])) / 2.0
+#                    neglogl[x, y, z, l] = (((image[x, y, z] - mu[l]) ** 2.0) / sigmasq[l] + log(sigmasq[l])) / 2.0 # FAST
                 
                     neglogl[x, y, z, l] += log(sqrt(2.0 * NPY_PI * sigmasq[l])) #original
 #                    neglogl[x, y, z, l] += log(sqrt(sigmasq[l])) # Demirkaya
