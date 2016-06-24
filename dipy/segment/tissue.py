@@ -70,6 +70,10 @@ class TissueClassifierHMRF(object):
         seg_init = icm.initialize_maximum_likelihood(neglogl)
 
         mu, sigma = com.seg_stats(image, seg_init, nclasses)
+        # Sort models
+        p = np.argsort(mu)
+        mu = mu[p]
+        sigma = sigma[p]
         sigmasq = sigma ** 2
 
         zero = np.zeros_like(image) + 0.001
@@ -89,6 +93,9 @@ class TissueClassifierHMRF(object):
             PVE = com.prob_image(image_gauss, nclasses, mu, sigmasq, PLN)
             mu_upd, sigmasq_upd = com.update_param(image_gauss, PVE, mu,
                                                    nclasses)
+            p = np.argsort(mu_upd)
+            mu_upd = mu_upd[p]
+            sigmasq_upd = sigmasq_upd[p]
 
             negll = com.negloglikelihood(image_gauss,
                                          mu_upd, sigmasq_upd, nclasses)
